@@ -4,6 +4,31 @@ EE 316 Computer Engineering Junior Lab
 Design Project 5
 Spring 2023
 
+## Requirements (2 PWM IPs and one PWM timer)
+ - Everyone : Install Board files for Cora Z7
+ - Erensto : PWM IP
+ - Ernesto : PWM SDK
+ - Graham  : XADC 
+ - Natahn  : LCD (Hardware IP & SDK integration)
+ - Graham  : Breadboard, FPGA, peripherial connection
+ - Erensto : AXI_GPIO
+ - Natahn  : SOftware Architecture
+ ## Peripherials
+ 
+ ### Inputs
+  - Photoresistor   (DC Motor & buzzer)
+  - Potentiomoeter  (Servo & LED)
+ ### PWM Ouputs
+  - DC Motor (AXI Timer)
+  - Servo (Starting point: PWM needs to be 20ms period & middle 7.% or 1.5ms / Ranges 2.5%-12.5% duty cycle)
+  - LED
+  - Buzzer  (AXI Timer / same as DC Motor)
+  - Onboard Buttons (AXI_GPIO) (3)
+   - Pressing button BTN0 will reset the system asynchronously.
+   - Pressing button BTN1 will select between two of the analog sources.
+   - Pressing button BTN2 will select between system-enable and disable.
+### Other Outputs
+ LCD  (Enable/Disable/Reset, etc.)
 
 Specification:  	Digital system using Xilinx ZynQ processor
 Due Date:      		Thursday, April 6
