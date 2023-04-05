@@ -12,6 +12,15 @@
 #include "xadcps.h"
 #include "xstatus.h"
 
+#include "PWM.h"
+#include "xsysmon.h"
+#include "xparameters.h"
+#include "sleep.h"
+#include "stdio.h"
+#include "xgpio.h"
+#include "xil_types.h"
+#include "debounce.h"
+
 /************************** RGB Constant Definitions ************************/
 
 // Color Masks
@@ -59,6 +68,39 @@ XScuGic Intc; /* The Instance of the Interrupt Controller Driver */
 XTmrCtr Timer_inst; /* The Instance of the timer Driver*/
 
 // ######################## ADC Definitions here #########################
+
+#define RGBLED_BASEADDR XPAR_PWM_0_PWM_AXI_BASEADDR
+#define LED_ON_DUTY 0x3FFF
+#define LED_OFF_DUTY 0x3000
+#define XADC_DEVICE_ID XPAR_XADC_WIZ_0_DEVICE_ID
+#define BTN_DEVICE_ID XPAR_AXI_GPIO_0_DEVICE_ID
+// Channels 0, 1, 5, 6, 8, 9, 12, 13, 15, VPVN are available
+// Channels 0, 8, 12 are differential 1.0V max
+// Channels 1, 5, 6, 9, 13, 15 are single-ended 3.3V max
+// All channels should be used in differential input mode
+#define XADC_SEQ_CHANNELS 0xB3630800
+#define XADC_CHANNELS 0xB3630008
+#define NUMBER_OF_CHANNELS 2
+const u8 Channel_List[NUMBER_OF_CHANNELS] = {
+	//3, // Start with VP/VN
+	//28, 16, 24, // Diff. Channels in ascending order
+	//17, 25, 22, 31, 21, 29 // Single-Ended Channels in ascending order
+	17, 25
+}; // 00008
+const char *Channel_Names[32] = {
+	"", "", "", "VP-VN",
+	"", "", "", "",
+	"", "", "", "",
+	"", "", "", "",
+	"A8-A9", "A0", "", "",
+	"", "A4", "A2", "",
+	"A10-A11", "A1", "", "",
+	"A6-A7", "A5", "", "A3"
+};
+
+
+
+
 
 /************************** System Interrupt ID Definitions ***************************/
 
@@ -114,6 +156,14 @@ void delayms(int n);
 
 // ######################## ADC Function Definitions here #########################
 
+void Xadc_Init(XSysMon *InstancePtr, u32 DeviceId); 
+
+#define READDATA_DBG 0
+u32 Xadc_ReadData (XSysMon *InstancePtr, u16 RawData[32]);
+
+float Xadc_RawToVoltage(u16 Data, u8 Channel); 
+
+int PWM_DUTY_CYCLE_INT(u16 XADC_Data);
 
 
 /************************** main *****************************/
@@ -395,6 +445,110 @@ for(i=0; i<50000; i++) ; //3195
 /************************** ADC Functions ************************/
 
 // ######################## ADC Function Definitions here #########################
+
+void Xadc_Init(XSysMon *InstancePtr, u32 DeviceId) {
+	XSysMon_Config *ConfigPtr;
+	ConfigPtr = XSysMon_LookupConfig(DeviceId);
+	XSysMon_CfgInitialize(InstancePtr, ConfigPtr, ConfigPtr->BaseAddress);
+
+	// Disable the Channel Sequencer before configuring the Sequence registers.
+	XSysMon_SetSequencerMode(InstancePtr, XSM_SEQ_MODE_SAFE);
+	// Disable all alarms
+	XSysMon_SetAlarmEnables(InstancePtr, 0x0);
+	// Set averaging for all channels to 16 samples
+	XSysMon_SetAvg(InstancePtr, XSM_AVG_16_SAMPLES);
+	// Set differential input mode for channels VP_VN, AUX0, AUX8, AUX12 and unipolar input mode for the rest
+	XSysMon_SetSeqInputMode(InstancePtr, XSM_SEQ_CH_VPVN | XSM_SEQ_CH_AUX00 | XSM_SEQ_CH_AUX08 | XSM_SEQ_CH_AUX12);
+	// Set 6ADCCLK acquisition time in all channels
+	XSysMon_SetSeqAcqTime(InstancePtr, XADC_SEQ_CHANNELS);
+	// Disable averaging in all channels
+	XSysMon_SetSeqAvgEnables(InstancePtr, XADC_SEQ_CHANNELS);
+	// Enable all channels
+	XSysMon_SetSeqChEnables(InstancePtr, XADC_SEQ_CHANNELS);
+	// Set the ADCCLK frequency equal to 1/32 of System clock
+	XSysMon_SetAdcClkDivisor(InstancePtr, 32);
+	// Enable Calibration
+	XSysMon_SetCalibEnables(InstancePtr, XSM_CFR1_CAL_PS_GAIN_OFFSET_MASK | XSM_CFR1_CAL_ADC_GAIN_OFFSET_MASK);
+	// Enable the Channel Sequencer in continuous sequencer cycling mode
+	XSysMon_SetSequencerMode(InstancePtr, XSM_SEQ_MODE_CONTINPASS);
+	// Clear the old status
+//	XSysMon_GetStatus(InstancePtr);
+}
+
+u32 Xadc_ReadData (XSysMon *InstancePtr, u16 RawData[32])
+{
+	u8 Channel;
+
+	if (READDATA_DBG != 0)
+		xil_printf("Waiting for EOS...\r\n");
+
+	// Clear the Status
+	XSysMon_GetStatus(InstancePtr);
+	// Wait until the End of Sequence occurs
+	while ((XSysMon_GetStatus(InstancePtr) & XSM_SR_EOS_MASK) != XSM_SR_EOS_MASK);
+
+	if (READDATA_DBG != 0)
+		xil_printf("Capturing XADC Data...\r\n");
+
+	for (Channel=0; Channel<32; Channel++) {
+		if (((1 << Channel) & XADC_CHANNELS) != 0) {
+			if (READDATA_DBG != 0)
+				xil_printf("Capturing Data for Channel %d\r\n", Channel);
+			RawData[Channel] = XSysMon_GetAdcData(InstancePtr, Channel);
+		}
+	}
+	return XADC_CHANNELS; // return a high bit for each channel successfully read
+}
+
+float Xadc_RawToVoltage(u16 Data, u8 Channel) {
+	float FloatData;
+	float Scale;
+	int Sign;
+
+	switch (Channel) {
+	case 3: // VP/VN (Cora Dedicated Analog Input)
+	case 16: // AUX0 (Cora A8/A9 Diff. Analog Input)
+	case 24: // AUX8 (Cora A10/A11 Diff. Analog Input)
+	case 28: Scale = 0.5; Sign = 1; break; // AUX12 (Cora A6/A7 Diff. Analog Input)
+	case 17: // AUX1 (Cora A0 Single-Ended Analog Input)
+	case 21: // AUX5 (Cora A4 Single-Ended Analog Input)
+	case 22: // AUX6 (Cora A2 Single-Ended Analog Input)
+	case 25: // AUX9 (Cora A1 Single-Ended Analog Input)
+	case 29: // AUX13 (Cora A5 Single-Ended Analog Input)
+	case 31: Scale = 3.3; Sign = 0; break; // AUX15 (Cora A3 Single-Ended Analog Input)
+	default: Scale = 0.0;
+	}
+	if (Sign && Test_Bit(Data, 15)) {
+		FloatData = -Scale;
+		Data = ~Data + 1;
+	} else
+		FloatData = Scale;
+	if (Sign)
+		FloatData *= (float)Data / (float)0x7FF0;
+	else
+		FloatData *= (float)Data / (float)0xFFF0;
+	return FloatData;
+}
+
+int PWM_DUTY_CYCLE_INT(u16 XADC_Data){
+	int value = (int)XADC_Data;
+	//printf("Value: %d \n", value);
+	int MAX_VALUE = 65536;
+	float percentage = ((float)value)/((float)MAX_VALUE);
+
+	float PWM_DUTY = 100*percentage;
+	//printf("Duty float: %d \n", PWM_DUTY);
+	int PWM_DUTY_int = (int)PWM_DUTY;
+	printf("Duty : %d \n", PWM_DUTY_int);
+	return PWM_DUTY_int;
+}
+
+
+
+
+
+
+
 
 /************************** Interrupt Functions ************************/
 
