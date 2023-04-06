@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
+		<item key="selection" value="XTmrCtr_PwmEnable"/>
+		<item key="wrap" value="true"/>
+		<item key="casesensitive" value="false"/>
+		<item key="wholeword" value="false"/>
+		<item key="incremental" value="false"/>
+		<item key="isRegEx" value="false"/>
+		<list key="findhistory">
+			<item value="XTmrCtr_PwmEnable"/>
+			<item value="pwmdisable"/>
+			<item value="PWM_timer_interrupt"/>
+			<item value="..."/>
+			<item value="enabled..."/>
+			<item value="enable.."/>
+			<item value="enable..."/>
+			<item value="clear_all"/>
+			<item value="LCD_write_line"/>
+			<item value="Xil_Out32"/>
+			<item value="pwm_write"/>
+			<item value="adc_wiz"/>
+			<item value="adc_wi"/>
+			<item value="adc"/>
+			<item value="wiz"/>
+		</list>
+		<list key="replacehistory">
+			<item value="Xadc_Inst"/>
+			<item value="PWM_Timer_inst"/>
+			<item value="system_delay_inct_Config"/>
+			<item value="PMOD_BTN_inct_Config"/>
+			<item value="PWM_Timer_isnt"/>
+			<item value="PWM_TIMER_ID"/>
+			<item value="system_delay"/>
+			<item value="xil_printf"/>
+		</list>
+	</section>
+	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
+		<item key="DIALOG_X_ORIGIN" value="1219"/>
+		<item key="DIALOG_Y_ORIGIN" value="417"/>
+		<item key="DIALOG_WIDTH" value="341"/>
+		<item key="DIALOG_HEIGHT" value="437"/>
+		<item key="DIALOG_FONT_NAME" value="1|Sans|10.0|0|GTK|1|"/>
+	</section>
+</section>

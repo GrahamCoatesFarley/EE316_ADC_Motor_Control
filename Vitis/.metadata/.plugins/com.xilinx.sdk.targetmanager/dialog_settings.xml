@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item key="devices_info_Local" value="{&quot;cables&quot;:[{&quot;name&quot;:&quot;Digilent Cora Z7 - 7007S 210370B7C210A&quot;,&quot;indexContextMap&quot;:{&quot;2&quot;:&quot;jsn-Cora Z7 - 7007S-210370B7C210A-4ba00477-0&quot;,&quot;3&quot;:&quot;jsn-Cora Z7 - 7007S-210370B7C210A-13723093-0&quot;}}]}"/>
+	<item key="devices_info_remote" value="{&quot;cables&quot;:[{&quot;name&quot;:&quot;Digilent Cora Z7 - 7007S 210370B7C210A&quot;,&quot;indexContextMap&quot;:{&quot;2&quot;:&quot;jsn-Cora Z7 - 7007S-210370B7C210A-4ba00477-0&quot;,&quot;3&quot;:&quot;jsn-Cora Z7 - 7007S-210370B7C210A-13723093-0&quot;}}]}"/>
+	<item key="EE_316_Digital_System_system-bitFile" value="${project_loc:EE_316_Digital_System}/_ide/bitstream/debug_run_wrapper.bit"/>
+	<item key="EE_316_Digital_System_system-bmmFile" value=""/>
+	<item key="EE_316_Digital_System_system-target" value="remote"/>
+	<item key="EE_316_Digital_System_system-device" value="Auto Detect"/>
+	<item key="EE_316_Digital_System_system-partial_bit" value="false"/>
+	<item key="EE_316_Digital_System_system-skip_rev_check" value="false"/>
+	<item key="programfpga.sdxproject" value="EE_316_Digital_System_system"/>
+</section>

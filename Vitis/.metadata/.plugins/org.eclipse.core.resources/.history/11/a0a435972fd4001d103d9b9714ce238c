@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="ASCII"?>
+<sdkproject:SdkProject xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sdkproject="http://www.xilinx.com/sdkproject" name="xgpio_intr_tapp_example_1" location="/repos/EE316/EE316_Digital_System_Zynq/Vitis/xgpio_intr_tapp_example_1" platform="/repos/EE316/EE316_Digital_System_Zynq/Vitis/Digital_Syetem_debug/export/Digital_Syetem_debug/Digital_Syetem_debug.xpfm" platformUID="xilinx:cora-z7-07s::0.0(custom)" systemProject="xgpio_intr_tapp_example_1_system" sysConfig="Digital_Syetem_debug" runtime="C/C++" cpu="standalone_domain" cpuInstance="ps7_cortexa9_0" os="standalone" mssSignature="7d9ea680fe785113caa3da7069bb4a9f">
+  <configuration name="Debug" id="xilinx.gnu.armv7.exe.debug.978079710">
+    <configBuildOptions xsi:type="sdkproject:SdkOptions"/>
+    <lastBuildOptions xsi:type="sdkproject:SdkOptions"/>
+  </configuration>
+  <configuration name="Release" id="xilinx.gnu.armv7.exe.release.211209073" dirty="true">
+    <configBuildOptions xsi:type="sdkproject:SdkOptions"/>
+  </configuration>
+  <template appTemplateName="empty_application"/>
+</sdkproject:SdkProject>

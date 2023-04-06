@@ -1,0 +1,9 @@
+verilog xil_defaultlib --include "/tools/Xilinx/Vivado/2022.2/data/xilinx_vip/include" --include "../../../../project_5.gen/sources_1/bd/debug_run/ipshared/ec67/hdl" --include "../../../../project_5.gen/sources_1/bd/debug_run/ipshared/ee60/hdl" --include "../../../../project_5.gen/sources_1/bd/debug_run/ipshared/1b7e/hdl/verilog" --include "../../../../project_5.gen/sources_1/bd/debug_run/ipshared/122e/hdl/verilog" --include "../../../../project_5.gen/sources_1/bd/debug_run/ipshared/b205/hdl/verilog" --include "../../../../project_5.gen/sources_1/bd/debug_run/ipshared/fd26/hdl/verilog" \
+"../../../bd/debug_run/ip/debug_run_processing_system7_0_1/sim/debug_run_processing_system7_0_1.v" \
+"../../../bd/debug_run/ip/debug_run_xbar_0/sim/debug_run_xbar_0.v" \
+"../../../bd/debug_run/ip/debug_run_xlconcat_0_1/sim/debug_run_xlconcat_0_1.v" \
+"../../../bd/debug_run/ip/debug_run_auto_pc_0/sim/debug_run_auto_pc_0.v" \
+
+verilog xil_defaultlib "glbl.v"
+
+nosort

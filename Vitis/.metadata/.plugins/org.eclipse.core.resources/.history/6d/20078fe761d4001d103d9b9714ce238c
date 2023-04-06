@@ -1,0 +1,942 @@
+// EE316 Project 5
+// Digital System
+
+/***************************** Include Files *********************************/
+
+#include "xparameters.h"    // 
+#include "xgpio.h"          // <= GPIO handler
+#include "xil_printf.h"     //
+#include "xil_exception.h"
+#include "xtmrctr.h"
+#include "xscugic.h"
+#include "xadcps.h"
+#include "xstatus.h"
+
+//#include "PWM.h"
+#include "xsysmon.h"
+#include "sleep.h"
+#include "xil_types.h"
+
+
+/************************** RGB Constant Definitions ************************/
+
+// Color Masks
+#define RGB_All 0x3F    // ALL '1' 
+#define RGB_0 0x07      // 000 111
+#define RGB_1 0x38      // 111 000
+
+/************************** Timer PWM Constant Definitions ************************/
+
+#define PWM_FREQUENCY		1000	// PWM frequency in Hz
+#define PWM_DUTY_CYCLE		50		// PWM duty cycle in percentage
+u32 PWM_period;
+u32 PWM_high_time;
+u32 PWM_low_time;
+
+/************************** LCD Constant Definitions ************************/
+
+#define RS 0x01
+#define EN 0x02
+#define LCD_CHANNEL_NUM 1
+
+/************************** Timer System Delay Constant Definitions ************************/
+#define RESET_VALUE	 	0xFA0A1EFF  //just 1 second, could set this to 1ms and then need to adapt Ernesto's system_delay
+#define ms_1_VALUE 	0xFFFE795F
+
+/************************** Device ID Definitions ***************************/
+
+#define reset_output_ID 		XPAR_SYSTEM_RESET_DEVICE_ID   // <= AXI_GPIO reset output signal (0 downto 0) OUTPUT
+#define RGB_LED_ID 				XPAR_RGB_LEDS_DEVICE_ID        // <= AXI_GPIO RGB interface INPUT
+#define PWM_ip_ID 				XPAR_PWM_IP_0_DEVICE_ID
+#define LCD_ID 					XPAR_LCD_AXI_GPIO_DEVICE_ID
+#define PWM_TIMER_ID 			XPAR_PWM_TIMER_DEVICE_ID
+#define XADC_DEVICE_ID 			XPAR_XADCPS_0_DEVICE_ID
+#define PMOD_BTN_ID				XPAR_PMOD_BTN_DEVICE_ID
+#define SYSTEM_DELAY_ID 		XPAR_SYSTEM_DELAY_DEVICE_ID
+
+#define PWM_ip_base_address 0x43C00000 // AZI4 uses direct memory write 'Xil_32()'
+
+#define AXI_GPIO_Default_CH 1
+
+XGpio RGB_inst;         /* The Instance of the RGB Driver */
+XGpio reset_inst;       /* The Instance of the Reset Driver */
+XGpio PWM_ip_inst;      /* The Instance of the PWM Driver*/
+XGpio LCD_inst;         /* The Instance of the LCD Driver*/
+XGpio PMOD_BTN_inst; /* The Instance of the GPIO Driver */
+
+
+XScuGic Intc; /* The Instance of the Interrupt Controller Driver */
+
+XTmrCtr PWM_Timer_inst; /* The Instance of the timer Driver*/
+XTmrCtr SYSTEM_DELAY_inst;
+
+XSysMon Xadc_inst;
+
+// ######################## ADC Definitions here #########################
+
+#define RGBLED_BASEADDR XPAR_PWM_0_PWM_AXI_BASEADDR
+#define XADC_DEVICE_ID XPAR_XADC_WIZ_0_DEVICE_ID
+#define BTN_DEVICE_ID XPAR_AXI_GPIO_0_DEVICE_ID
+// Channels 0, 1, 5, 6, 8, 9, 12, 13, 15, VPVN are available
+// Channels 0, 8, 12 are differential 1.0V max
+// Channels 1, 5, 6, 9, 13, 15 are single-ended 3.3V max
+// All channels should be used in differential input mode
+#define XADC_SEQ_CHANNELS 0xB3630800
+#define XADC_CHANNELS 0xB3630008
+#define NUMBER_OF_CHANNELS 2
+const u8 Channel_List[NUMBER_OF_CHANNELS] = {
+	//3, // Start with VP/VN
+	//28, 16, 24, // Diff. Channels in ascending order
+	//17, 25, 22, 31, 21, 29 // Single-Ended Channels in ascending order
+	17, 25
+}; // 00008
+const char *Channel_Names[32] = {
+	"", "", "", "VP-VN",
+	"", "", "", "",
+	"", "", "", "",
+	"", "", "", "",
+	"A8-A9", "A0", "", "",
+	"", "A4", "A2", "",
+	"A10-A11", "A1", "", "",
+	"A6-A7", "A5", "", "A3"
+};
+
+#define Test_Bit(VEC,BIT) ((VEC&(1<<BIT))!=0)
+
+
+/************************** System Interrupt ID Definitions ***************************/
+
+#define INTC_PMOD_BTN_INTERRUPT_ID	XPAR_FABRIC_PMOD_BTN_IP2INTC_IRPT_INTR
+#define PWM_TIMER_INTERRUPT_ID 		XPAR_FABRIC_PWM_TIMER_INTERRUPT_INTR
+#define SYSTEM_DELAY_INTERRUPT_ID	XPAR_FABRIC_SYSTEM_DELAY_INTERRUPT_INTR
+
+#define INTC_DEVICE_ID	XPAR_SCUGIC_SINGLE_DEVICE_ID
+#define INTC			XScuGic
+#define INTC_HANDLER	XScuGic_InterruptHandler
+
+static u16 GlobalIntrMask = 1; /* GPIO channel mask that is needed by the Interrupt Handler */
+static volatile u32 IntrFlag; /* Interrupt Handler Flag */
+
+// Define loop delay (TEMPORARY)
+#define LED_DELAY     100000000
+
+/************************** Function Declaration ************************/
+
+// PWM Hardware IP
+void setup (void); // Function to initialize global variables and interfaces
+//void system_delay (int wait_for);
+void pwm_write (int *intensity, int *direction);
+
+// ADC
+// static int XAdcPolledxil_printfExample(u16 XAdcDeviceId);
+// static int XAdcFractionToInt(float FloatNum);
+
+// LCD Software
+void LCD_nibble_write(char data, unsigned char control);
+void LCD_command(unsigned char command);
+void LCD_init(void);
+void LCD_data(char data);
+void LCD_write_line(char* cstring);
+void LCD_clear_all(void); // Clear both lines
+void LCD_set_line(int line); // Clear line and set to position 1
+
+// Interrupt Functions
+void GpioHandler(void *CallBackRef);
+
+int GpioIntrExample(INTC *IntcInstancePtr, XGpio *InstancePtr,
+			u16 DeviceId, u16 IntrId,
+			u16 IntrMask, u32 *DataRead);
+
+int GpioSetupIntrSystem(INTC *IntcInstancePtr, XGpio *InstancePtr,
+			u16 DeviceId, u16 IntrId, u16 IntrMask);
+
+void GpioDisableIntr(INTC *IntcInstancePtr, XGpio *InstancePtr,
+			u16 IntrId, u16 IntrMask);
+
+// Temporary LCD delay function
+
+void delayms(int n);
+
+int map(int input, int input_min, int input_max, int output_min, int output_max);
+// ######################## ADC Function Definitions here #########################
+
+void Xadc_Init(XSysMon *InstancePtr, u32 DeviceId);
+
+#define READDATA_DBG 0
+u32 Xadc_ReadData (XSysMon *InstancePtr, u16 RawData[32]);
+
+float Xadc_RawToVoltage(u16 Data, u8 Channel);
+
+int PWM_DUTY_CYCLE_INT(u16 XADC_Data);
+
+/*###########################################################*/
+/************************** Interrupt Function Handlers *****************************/
+void PMOD_BTN(void *CallbackRef); // PMOD_BTN_AXI_GPIO handler
+void system_delay_interrupt(void *CallbackRef);
+//void PWM_timer_interrupt(void *CallBackRef, u8 TmrCtrNumber);
+
+
+
+/************************** main *****************************/
+
+enum adc_channel_enum {a0, a1};
+enum system_state_enum {enable, disable};
+
+enum adc_channel_enum adc_channel;
+enum system_state_enum system_state;
+int reset_flag = 0;
+
+void update_lcd(){
+	LCD_clear_all();
+	LCD_set_line(1);
+	LCD_write_line("Enabled...");
+	LCD_set_line(2);
+	if (adc_channel == a0){
+		LCD_write_line("ADC Channel A0");
+	}else if (adc_channel == a1){
+		LCD_write_line("ADC Channel A1");
+	}
+}
+int main(void)
+{
+	reset_here:
+	reset_flag = 0;
+
+	adc_channel = a0;
+	system_state = disable;
+	xil_printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\r");
+    xil_printf("setup...\n\n\r");
+    setup(); // Initialize interfaces
+    
+    xil_printf("Running infinite loop...\n\r");
+
+    int PWM_inensity = 0;
+    int direction = 1;
+    u16 Xadc_RawData[32];
+    int current_chanel;
+    int duty;
+    int high;
+    while (1) {
+
+    	if (system_state == enable){
+
+			Xadc_ReadData(&Xadc_inst, Xadc_RawData);
+			xil_printf("Analog: A0:%d / A1:%d\n\r", Xadc_RawData[17], Xadc_RawData[25]);
+			// Set RGB 0 to white RGB 1 off
+			XGpio_DiscreteWrite(&RGB_inst, AXI_GPIO_Default_CH, RGB_0);
+			//pwm_write(&PWM_inensity, &direction);
+
+//			LCD_set_line(2);
+//			LCD_write_line("Nathan 1");
+
+			//system_delay(LED_DELAY);
+			XTmrCtr_PwmDisable(&PWM_Timer_inst);
+			delayms(100);
+			update_lcd();
+
+
+
+
+			// Set RGB 0 to off  RGB 1 to while
+			XGpio_DiscreteWrite(&RGB_inst, AXI_GPIO_Default_CH, RGB_1);
+			if (adc_channel == a0){
+				current_chanel = (int)Xadc_RawData[17];
+				duty = map(current_chanel, 0, 65535, 26, 128);
+				Xil_Out32(PWM_ip_base_address, duty);
+				high = (int)((float)(current_chanel)/(float)65535)*(float)20000000;
+				XTmrCtr_PwmConfigure(&PWM_Timer_inst, 20000000, high);
+				xil_print("%d\r\n", );
+			}else if (adc_channel == a1){
+				current_chanel = (int)Xadc_RawData[25];
+				duty = map(current_chanel, 0, 65535, 26, 128);
+				Xil_Out32(PWM_ip_base_address, duty);
+				XTmrCtr_PwmConfigure(&PWM_Timer_inst, 20000000, (int)((float)(current_chanel)/(float)65535)*(float)20000000);
+			}
+
+			XTmrCtr_PwmEnable(&PWM_Timer_inst);
+			delayms(100);
+
+			//pwm_write(&PWM_inensity, &direction);
+
+//			LCD_set_line(2);
+//			LCD_write_line("Nathan 2 ABC");
+
+			//system_delay(LED_DELAY);
+			//delayms(1000);
+
+			if (reset_flag == 1) goto reset_here;
+    	} else if (system_state ==  disable){
+    		LCD_clear_all();
+    		LCD_set_line(1);
+    		LCD_write_line("Disabled...");
+    		delayms(500);
+    	}
+    }
+}
+
+
+
+/************************** setup function declaration ************************/
+
+void setup (void){
+
+    int Status;
+
+    /* THERE IS NO NEED TO SET DIRECTION IF IT WAS DONE ON HARDWARE*/
+
+    // Initialize reset GPIO driver
+    Status = XGpio_Initialize(&reset_inst, reset_output_ID);
+	if (Status != XST_SUCCESS) {
+		xil_printf("reset GPIO Initialization Failed\r\n");
+	}else{
+		xil_printf("Reset AXI_GPIO initialized / ");
+	}
+	// Initialize RGB GPIO driver
+    Status = XGpio_Initialize(&RGB_inst, RGB_LED_ID);
+	if (Status != XST_SUCCESS) {
+		xil_printf("RGB GPIO Initialization Failed\r\n");
+	}else{
+        XGpio_DiscreteClear(&RGB_inst, AXI_GPIO_Default_CH, RGB_All); // Clear all LED (set to zero)
+		xil_printf("RGB AXI_GPIO initialized / ");
+	}
+
+	// Initialize PMOD BTN GPIO driver
+	Status = XGpio_Initialize(&PMOD_BTN_inst, PMOD_BTN_ID);
+	if (Status != XST_SUCCESS) {
+		xil_printf("PMOD GPIO Initialization Failed\r\n");
+	}else{
+		XGpio_DiscreteClear(&RGB_inst, AXI_GPIO_Default_CH, RGB_All); // Clear all LED (set to zero)
+		xil_printf("PMOD_BTN AXI_GPIO initialized \n\n\r");
+	}
+    // Initialize PWM IP GPIO driver
+    Status = XGpio_Initialize(&PWM_ip_inst, PWM_ip_ID);
+	if (Status != XST_SUCCESS) {
+		xil_printf("PWM_ip GPIO Initialization Failed\r\n");
+	}else{
+        XGpio_SetDataDirection(&PWM_ip_inst, 1, 0x00);  // set all pins as output 
+        Xil_Out32(PWM_ip_base_address, 0x64);          // Set hardware PWM output to 50% duty cycle
+        xil_printf("PWM_ip AXI_GPIO initialized \n\r");
+	}
+
+	// Initialize System Delay timer
+	Status = XTmrCtr_Initialize(&SYSTEM_DELAY_inst, SYSTEM_DELAY_ID);
+	if (Status != XST_SUCCESS) {
+			xil_printf("Timer System Delay AXI Initialization Failed\r\n");
+	}else{
+		xil_printf("Timer System Delay initialized\r\n");
+	}
+	// Initialize System Delay Interrupt
+	XScuGic_Config *system_delay_inct_Config;
+	system_delay_inct_Config = XScuGic_LookupConfig(INTC_DEVICE_ID); // stays the same
+	XScuGic_CfgInitialize(&Intc, system_delay_inct_Config, system_delay_inct_Config->CpuBaseAddress);
+
+	XScuGic_Connect(&Intc, SYSTEM_DELAY_INTERRUPT_ID,
+					 (Xil_ExceptionHandler)system_delay_interrupt, &SYSTEM_DELAY_inst);
+
+	XScuGic_Enable(&Intc, SYSTEM_DELAY_INTERRUPT_ID);
+
+	XTmrCtr_SetHandler(&SYSTEM_DELAY_inst, system_delay_interrupt, &SYSTEM_DELAY_inst);
+
+	XTmrCtr_SetOptions(&SYSTEM_DELAY_inst, 0,
+					XTC_INT_MODE_OPTION); //XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION);
+
+	XTmrCtr_SetResetValue(&SYSTEM_DELAY_inst, 0, RESET_VALUE);
+
+    // Initialize PWM timer
+    Status = XTmrCtr_Initialize(&PWM_Timer_inst, PWM_TIMER_ID);
+    if (Status != XST_SUCCESS) {
+        xil_printf("Timer PWM AXI Initialization Failed\r\n");
+    }
+
+    // Initialize pwm timer Interrupt
+    XScuGic_Config *pwm_timer_inct_Config;
+    pwm_timer_inct_Config = XScuGic_LookupConfig(INTC_DEVICE_ID); // stays the same
+    	XScuGic_CfgInitialize(&Intc, pwm_timer_inct_Config, pwm_timer_inct_Config->CpuBaseAddress);
+
+    	//XScuGic_Connect(&Intc, PWM_TIMER_INTERRUPT_ID,
+    					 //(Xil_ExceptionHandler)PWM_timer_interrupt, &PWM_Timer_inst);
+
+    	XScuGic_Enable(&Intc, PWM_TIMER_INTERRUPT_ID);
+
+    	//XTmrCtr_SetHandler(&PWM_Timer_inst, PWM_timer_interrupt, &PWM_Timer_inst);
+
+    	XTmrCtr_SetOptions(&PWM_Timer_inst, 0,
+    					0); //XTC_INT_MODE_OPTION | XTC_AUTO_RELOAD_OPTION);
+    	XTmrCtr_SetOptions(&PWM_Timer_inst, 1, 0); //XTC_INT_MODE_OPTION
+
+    	XTmrCtr_SetResetValue(&PWM_Timer_inst, 0, RESET_VALUE);
+
+    	int DutyCycle;
+		DutyCycle = XTmrCtr_PwmConfigure(&PWM_Timer_inst, 20000000, ((65535/2)/65535)*20000000);
+
+		xil_printf("Timer PWM initialized at period\r\n");
+		xil_printf("PWM Configured for Duty Cycle = %d\r\n", DutyCycle);
+
+    	XTmrCtr_PwmEnable(&PWM_Timer_inst);
+    	//XTmrCtr_PwmDisable(&PWM_Timer_inst);
+
+    // Initialize ADC
+
+
+
+    // Initialize PMOD_BTN Interrupt
+    XScuGic_Config *PMOD_BTN_inct_Config;
+    PMOD_BTN_inct_Config = XScuGic_LookupConfig(INTC_DEVICE_ID); // stays the same
+    XScuGic_CfgInitialize(&Intc, PMOD_BTN_inct_Config, PMOD_BTN_inct_Config->CpuBaseAddress);
+
+    XScuGic_Connect(&Intc, INTC_PMOD_BTN_INTERRUPT_ID,
+    				 (Xil_ExceptionHandler)PMOD_BTN, &PMOD_BTN_inst);
+
+    XScuGic_Enable(&Intc, INTC_PMOD_BTN_INTERRUPT_ID);
+
+    /*
+	 * Enable the GPIO channel interrupts so that push button can be
+	 * detected and enable interrupts for the GPIO device
+	 */
+    XGpio_InterruptEnable(&PMOD_BTN_inst, 1);
+    XGpio_InterruptGlobalEnable(&PMOD_BTN_inst);
+
+    // Initialize Exception Handler
+
+    /*
+	 * Initialize the exception table and register the interrupt
+	 * controller handler with the exception table
+	 */
+	Xil_ExceptionInit();
+
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,
+			 (Xil_ExceptionHandler)INTC_HANDLER, &Intc);
+
+	/* Enable non-critical exceptions */
+	Xil_ExceptionEnable();
+
+	// ^^^^ Something similar for timer interrupts
+
+	// Initialize LCD
+    Status = XGpio_Initialize(&LCD_inst, LCD_ID);
+	if (Status != XST_SUCCESS) {
+		xil_printf("LCD AXI_GPIO Initialization Failed\r\n");
+	}else{
+		XGpio_SetDataDirection(&LCD_inst, LCD_CHANNEL_NUM, 0x00);
+        LCD_init();
+        LCD_command(0x85);
+        LCD_write_line("Nathan");
+        LCD_command(0xC0);
+        LCD_write_line("Line 2");
+        //lcd_write_string(DisplayMsg1, 1);
+        //lcd_write_string(DisplayMsg2, 2);
+        xil_printf("LCD, Initialized.... Nathan\n\r");
+	}
+
+	// Initialize ADC
+	//(XSysMon *InstancePtr, u32 DeviceId);
+	Xadc_Init(&Xadc_inst, XADC_DEVICE_ID);
+	xil_printf("ADC, Initialized....\n\r");
+
+    // Setup Compete
+    xil_printf("-------------------SETUP COMPLETE--------------------\n\n\r");
+}
+
+/************************** System Delay Function ************************/
+
+int system_hold = 0;
+
+void delayms (int delay){
+	int repetitions;
+	XTmrCtr_SetResetValue(&SYSTEM_DELAY_inst, 0, ms_1_VALUE);
+	for (repetitions = 0; repetitions<delay; repetitions++){
+		XTmrCtr_Start(&SYSTEM_DELAY_inst, 0);
+		system_hold = 1;
+		//xil_printf("%d / %d / %d\r\n", repetitions, system_hold, delay);
+		while (system_hold == 1);
+	}
+}
+
+/************************** PWM Intensity ************************/
+#define pwm_step_test_1 16
+#define pwm_step_test_2 32
+#define pwm_step_test_3 64
+#define pwm_step_test 	1300
+
+int map(int input, int input_min, int input_max, int output_min, int output_max) {
+    // First, calculate the input value as a proportion of the input range
+    float proportion = (float)(input - input_min) / (float)(input_max - input_min);
+
+    // Then, multiply that proportion by the output range and add the output minimum to get the output value
+    float output = proportion * (float)(output_max - output_min) + (float)output_min;
+
+    // Round the output value to the nearest integer
+    int rounded_output = (int)(output + 0.5f);
+
+    // Return the rounded output value
+    return rounded_output;
+}
+
+void pwm_write (int *intensity, int *direction){
+	if (*intensity >= 1024){
+		*direction = 0;
+	}else if (*intensity <= 0){
+		*direction = 1;
+	}
+
+	xil_printf("PWM_Digital value => %d", *intensity);
+	int duty = map(*intensity, 0, 1024, 26, 128);
+	Xil_Out32(PWM_ip_base_address, duty);
+
+	if (*direction == 0){
+		*intensity = *intensity - pwm_step_test_3;
+	}else if (*direction == 1){
+		*intensity = *intensity + pwm_step_test_3;
+	}
+}
+
+/************************** LCD Functions ************************/
+
+//  Clear line 1 ==> 0x01
+//  Clear line 2 ==> 0x01 + 0x40 = 0x41
+
+/* This command clears the DDRAM and returns the cursor to the beginning of the second line.
+ * The DDRAM address for the second line starts at 0x40, so we add this value to the clear command for line 1 to clear the second line. */
+
+
+//this function always takes in 8 bits and only sends the top 4 (MSB most significant bits)
+//also assuming that the control parameter is either 0 or RS, so (RS & RS) equals 1 and executes the if statement
+void LCD_nibble_write(char data, unsigned char control) {
+
+	volatile uint8_t the6bits = 0x00;
+
+	the6bits |= (data >> 4);
+
+	/* set R/S bit */
+	if (control & RS) {
+		//GPIOB->BSRR = RS;
+	the6bits |= (RS << 4); //(data & 0xF0)
+	}
+	else {
+		//GPIOB->BSRR = RS << 16;
+	the6bits &= ~(RS << 4);
+	}
+
+	the6bits &= ~(EN << 4);
+
+	XGpio_DiscreteWrite(&LCD_inst, LCD_CHANNEL_NUM, the6bits);
+
+	/* pulse E */
+	//GPIOB->BSRR = EN;
+	the6bits |= EN << 4;
+	XGpio_DiscreteWrite(&LCD_inst, LCD_CHANNEL_NUM, the6bits);
+
+	// xil_printf("%X\r\n", the6bits);
+
+	//set
+	delayms(0);
+	//clear
+	the6bits &= ~(EN << 4);
+	XGpio_DiscreteWrite(&LCD_inst, LCD_CHANNEL_NUM, the6bits);
+
+	// xil_printf("%X\r\n", the6bits);
+}
+
+void LCD_command(unsigned char command){
+
+LCD_nibble_write(command & 0xF0, 0);    /* upper nibble first */
+LCD_nibble_write(command << 4, 0);      /* then lower nibble */
+
+if (command < 4)
+	delayms(2);             //command 1 and 2 needs up to 1.64ms
+else
+	delayms(1);             //all others need 40 us (microseconds?)
+}
+
+void LCD_init(void){
+
+	delayms(20);                /* LCD controller reset sequence */
+	  LCD_nibble_write(0x30, 0);
+	  delayms(5);
+	  LCD_nibble_write(0x30, 0);
+	  delayms(1);
+	  LCD_nibble_write(0x30, 0);
+	  delayms(1);
+
+	LCD_nibble_write(0x20, 0);  /* use 4-bit data mode */
+	delayms(1);
+
+
+	LCD_command(0x28); /* set 4-bit data, 2-line, 5x7 font */
+	LCD_command(0x06);  //move cursor right after each char sent
+	LCD_command(0x01);  //clear screen, move cursor to home
+	LCD_command(0x0C);  //turn on display, cursor blinking 0x0F, cursor not blinking and not being display = 0x0C
+	//1100 = 0xC
+}
+
+void LCD_data(char data){
+	LCD_nibble_write(data & 0xF0, RS); //upper nibble first
+	LCD_nibble_write(data << 4, RS);   //lower nibble
+	delayms(1);
+}
+
+void LCD_write_line(char* cstring){
+
+	uint8_t ch;
+	for(ch=0; cstring[ch] != 0; ch++){
+		LCD_data(cstring[ch]);
+	}
+}
+
+void LCD_clear_all(void){
+	LCD_command(0x01);
+	LCD_command(0x41);
+	LCD_command(0x80);
+}
+
+void LCD_set_line(int line){
+	// line must be either 1 or 2
+
+	if (line == 1) {
+		LCD_command(0x01); // Clear Line 1
+		LCD_command(0x80); // Set cursor to first position line 1
+	}else if (line == 2){
+		LCD_command(0x41); // Clear Line 2
+		LCD_command(0xC0); // Set cursor to first position line 2
+	}
+}
+
+/************************** ADC Functions ************************/
+
+// ######################## ADC Function Definitions here #########################
+
+void Xadc_Init(XSysMon *InstancePtr, u32 DeviceId) {
+	XSysMon_Config *ConfigPtr;
+	ConfigPtr = XSysMon_LookupConfig(DeviceId);
+	XSysMon_CfgInitialize(InstancePtr, ConfigPtr, ConfigPtr->BaseAddress);
+
+	// Disable the Channel Sequencer before configuring the Sequence registers.
+	XSysMon_SetSequencerMode(InstancePtr, XSM_SEQ_MODE_SAFE);
+	// Disable all alarms
+	XSysMon_SetAlarmEnables(InstancePtr, 0x0);
+	// Set averaging for all channels to 16 samples
+	XSysMon_SetAvg(InstancePtr, XSM_AVG_16_SAMPLES);
+	// Set differential input mode for channels VP_VN, AUX0, AUX8, AUX12 and unipolar input mode for the rest
+	XSysMon_SetSeqInputMode(InstancePtr, XSM_SEQ_CH_VPVN | XSM_SEQ_CH_AUX00 | XSM_SEQ_CH_AUX08 | XSM_SEQ_CH_AUX12);
+	// Set 6ADCCLK acquisition time in all channels
+	XSysMon_SetSeqAcqTime(InstancePtr, XADC_SEQ_CHANNELS);
+	// Disable averaging in all channels
+	XSysMon_SetSeqAvgEnables(InstancePtr, XADC_SEQ_CHANNELS);
+	// Enable all channels
+	XSysMon_SetSeqChEnables(InstancePtr, XADC_SEQ_CHANNELS);
+	// Set the ADCCLK frequency equal to 1/32 of System clock
+	XSysMon_SetAdcClkDivisor(InstancePtr, 32);
+	// Enable Calibration
+	XSysMon_SetCalibEnables(InstancePtr, XSM_CFR1_CAL_PS_GAIN_OFFSET_MASK | XSM_CFR1_CAL_ADC_GAIN_OFFSET_MASK);
+	// Enable the Channel Sequencer in continuous sequencer cycling mode
+	XSysMon_SetSequencerMode(InstancePtr, XSM_SEQ_MODE_CONTINPASS);
+	// Clear the old status
+//	XSysMon_GetStatus(InstancePtr);
+}
+
+u32 Xadc_ReadData (XSysMon *InstancePtr, u16 RawData[32])
+{
+	u8 Channel;
+
+	if (READDATA_DBG != 0)
+		xil_printf("Waiting for EOS...\r\n");
+
+	// Clear the Status
+	XSysMon_GetStatus(InstancePtr);
+	// Wait until the End of Sequence occurs
+	while ((XSysMon_GetStatus(InstancePtr) & XSM_SR_EOS_MASK) != XSM_SR_EOS_MASK);
+
+	if (READDATA_DBG != 0)
+		xil_printf("Capturing XADC Data...\r\n");
+
+	for (Channel=0; Channel<32; Channel++) {
+		if (((1 << Channel) & XADC_CHANNELS) != 0) {
+			if (READDATA_DBG != 0)
+				xil_printf("Capturing Data for Channel %d\r\n", Channel);
+			RawData[Channel] = XSysMon_GetAdcData(InstancePtr, Channel);
+		}
+	}
+	return XADC_CHANNELS; // return a high bit for each channel successfully read
+}
+
+float Xadc_RawToVoltage(u16 Data, u8 Channel) {
+	float FloatData;
+	float Scale;
+	int Sign;
+
+	switch (Channel) {
+	case 3: // VP/VN (Cora Dedicated Analog Input)
+	case 16: // AUX0 (Cora A8/A9 Diff. Analog Input)
+	case 24: // AUX8 (Cora A10/A11 Diff. Analog Input)
+	case 28: Scale = 0.5; Sign = 1; break; // AUX12 (Cora A6/A7 Diff. Analog Input)
+	case 17: // AUX1 (Cora A0 Single-Ended Analog Input)
+	case 21: // AUX5 (Cora A4 Single-Ended Analog Input)
+	case 22: // AUX6 (Cora A2 Single-Ended Analog Input)
+	case 25: // AUX9 (Cora A1 Single-Ended Analog Input)
+	case 29: // AUX13 (Cora A5 Single-Ended Analog Input)
+	case 31: Scale = 3.3; Sign = 0; break; // AUX15 (Cora A3 Single-Ended Analog Input)
+	default: Scale = 0.0;
+	}
+	if (Sign && Test_Bit(Data, 15)) {
+		FloatData = -Scale;
+		Data = ~Data + 1;
+	} else
+		FloatData = Scale;
+	if (Sign)
+		FloatData *= (float)Data / (float)0x7FF0;
+	else
+		FloatData *= (float)Data / (float)0xFFF0;
+	return FloatData;
+}
+
+int PWM_DUTY_CYCLE_INT(u16 XADC_Data){
+	int value = (int)XADC_Data;
+	//printf("Value: %d \n", value);
+	int MAX_VALUE = 65536;
+	float percentage = ((float)value)/((float)MAX_VALUE);
+
+	float PWM_DUTY = 100*percentage;
+	//printf("Duty float: %d \n", PWM_DUTY);
+	int PWM_DUTY_int = (int)PWM_DUTY;
+	printf("Duty : %d \n", PWM_DUTY_int);
+	return PWM_DUTY_int;
+}
+
+/************************** Interrupt Functions ************************/
+
+int GpioIntrExample(INTC *IntcInstancePtr, XGpio* InstancePtr, u16 DeviceId,
+			u16 IntrId, u16 IntrMask, u32 *DataRead)
+{
+	int Status;
+	u32 delay;
+
+	/* Initialize the GPIO driver. If an error occurs then exit */
+	Status = XGpio_Initialize(InstancePtr, DeviceId);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+	Status = GpioSetupIntrSystem(IntcInstancePtr, InstancePtr, DeviceId,
+					IntrId, IntrMask);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+	IntrFlag = 0;
+	delay = 0;
+
+	while(!IntrFlag && (delay < 0xFFFFFFFF)) {
+		delay++;
+	}
+
+	GpioDisableIntr(IntcInstancePtr, InstancePtr, IntrId, IntrMask);
+
+	*DataRead = IntrFlag;
+
+	return Status;
+}
+
+
+/******************************************************************************/
+/**
+*
+* This function performs the GPIO set up for Interrupts
+*
+* @param	IntcInstancePtr is a reference to the Interrupt Controller
+*		driver Instance
+* @param	InstancePtr is a reference to the GPIO driver Instance
+* @param	DeviceId is the XPAR_<GPIO_instance>_DEVICE_ID value from
+*		xparameters.h
+* @param	IntrId is XPAR_<INTC_instance>_<GPIO_instance>_IP2INTC_IRPT_INTR
+*		value from xparameters.h
+* @param	IntrMask is the GPIO channel mask
+*
+* @return	XST_SUCCESS if the Test is successful, otherwise XST_FAILURE
+*
+* @note		None.
+*
+******************************************************************************/
+int GpioSetupIntrSystem(INTC *IntcInstancePtr, XGpio *InstancePtr,
+			u16 DeviceId, u16 IntrId, u16 IntrMask)
+{
+	int Result;
+
+	GlobalIntrMask = IntrMask;
+
+
+	XScuGic_Config *IntcConfig;
+
+	/*
+	 * Initialize the interrupt controller driver so that it is ready to
+	 * use.
+	 */
+	IntcConfig = XScuGic_LookupConfig(INTC_DEVICE_ID);
+	if (NULL == IntcConfig) {
+		return XST_FAILURE;
+	}
+
+	Result = XScuGic_CfgInitialize(IntcInstancePtr, IntcConfig,
+					IntcConfig->CpuBaseAddress);
+	if (Result != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+
+	XScuGic_SetPriorityTriggerType(IntcInstancePtr, IntrId,
+					0xA0, 0x3);
+
+	/*
+	 * Connect the interrupt handler that will be called when an
+	 * interrupt occurs for the device.
+	 */
+	Result = XScuGic_Connect(IntcInstancePtr, IntrId,
+				 (Xil_ExceptionHandler)GpioHandler, InstancePtr);
+	if (Result != XST_SUCCESS) {
+		return Result;
+	}
+
+	/* Enable the interrupt for the GPIO device.*/
+	XScuGic_Enable(IntcInstancePtr, IntrId);
+
+	/*
+	 * Enable the GPIO channel interrupts so that push button can be
+	 * detected and enable interrupts for the GPIO device
+	 */
+	XGpio_InterruptEnable(InstancePtr, IntrMask);
+	XGpio_InterruptGlobalEnable(InstancePtr);
+
+	/*
+	 * Initialize the exception table and register the interrupt
+	 * controller handler with the exception table
+	 */
+	Xil_ExceptionInit();
+
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,
+			 (Xil_ExceptionHandler)INTC_HANDLER, IntcInstancePtr);
+
+	/* Enable non-critical exceptions */
+	Xil_ExceptionEnable();
+
+	return XST_SUCCESS;
+}
+
+/******************************************************************************/
+/**
+*
+* This is the interrupt handler routine for the GPIO for this example.
+*
+* @param	CallbackRef is the Callback reference for the handler.
+*
+* @return	None.
+*
+* @note		None.
+*
+******************************************************************************/
+void GpioHandler(void *CallbackRef)
+{
+	XGpio *GpioPtr = (XGpio *)CallbackRef;
+
+	IntrFlag = 1;
+
+	/* Clear the Interrupt */
+	XGpio_InterruptClear(GpioPtr, GlobalIntrMask);
+
+}
+
+/******************************************************************************/
+/**
+*
+* This function disables the interrupts for the GPIO
+*
+* @param	IntcInstancePtr is a pointer to the Interrupt Controller
+*		driver Instance
+* @param	InstancePtr is a pointer to the GPIO driver Instance
+* @param	IntrId is XPAR_<INTC_instance>_<GPIO_instance>_VEC
+*		value from xparameters.h
+* @param	IntrMask is the GPIO channel mask
+*
+* @return	None
+*
+* @note		None.
+*
+******************************************************************************/
+void GpioDisableIntr(INTC *IntcInstancePtr, XGpio *InstancePtr,
+			u16 IntrId, u16 IntrMask)
+{
+	XGpio_InterruptDisable(InstancePtr, IntrMask);
+
+	/* Disconnect the interrupt */
+	XScuGic_Disable(IntcInstancePtr, IntrId);
+	XScuGic_Disconnect(IntcInstancePtr, IntrId);
+
+	return;
+}
+
+/************************** Interrupt Function Handlers ************************/
+
+void PMOD_BTN(void *CallbackRef){
+	XGpio *GpioPtr = (XGpio *)CallbackRef;
+
+	/* Clear the Interrupt */
+	XGpio_InterruptClear(GpioPtr, GlobalIntrMask);
+
+
+	u8 btn_data = 0xFF & XGpio_DiscreteRead(&PMOD_BTN_inst, 1);
+	if (btn_data != 0x0){
+		xil_printf("Button Interrupt!  ");
+		if(btn_data == 0x1){			// reset system
+			xil_printf("BTN0\r\n\n");
+			reset_flag = 1;
+		}else if(btn_data == 0x2){
+			xil_printf("BTN1\r\n\n");	// Select ADC Source
+			if (adc_channel == a0){
+				adc_channel = a1;
+			}else if (adc_channel == a1){
+				adc_channel = a0;
+			}
+
+		}else if(btn_data == 0x4){
+			xil_printf("BTN2\r\n\n");	// Select System State
+			if (system_state == enable){
+				system_state = disable;
+			}else if (system_state == disable){
+				system_state = enable;
+			}
+
+		}else if(btn_data == 0x8){
+			xil_printf("BTN3 (nothing to do)\r\n\n");	// Nothing
+		}else{	// Others
+
+			xil_printf("Unknown button, maybe 2 are pressed   %d  \r\n", btn_data);
+		}
+	}
+}
+//adc_chanel system_state
+
+void system_delay_interrupt(void *CallbackRef){
+	// XTmrCtr *InstancePtr = (XTmrCtr *)CallbackRef;
+
+	system_hold = 0;
+	XTmrCtr_Stop(&SYSTEM_DELAY_inst, 0);
+}
+
+//void PWM_timer_interrupt(void *CallBackRef, u8 TmrCtrNumber){
+//	xil_printf("PWM Timer Interrupt!  %d  \r\n", TmrCtrNumber);
+//	//XTmrCtr_Stop(&PWM_Timer_inst, 0);
+//	//XTmrCtr_Stop(&PWM_Timer_inst, 1);
+//	//XTmrCtr_PwmDisable(&PWM_Timer_inst);
+//}
+
+
+/************************** tmp ************************/
+
+/************************** tmp ************************/
+
+/************************** tmp ************************/
+
+/************************** tmp ************************/
+
+/************************** tmp ************************/
+
+/************************** tmp ************************/
+

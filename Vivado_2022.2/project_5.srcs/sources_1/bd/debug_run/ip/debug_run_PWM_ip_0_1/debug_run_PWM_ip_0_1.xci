@@ -1,0 +1,191 @@
+{
+  "schema": "xilinx.com:schema:json_instance:1.0",
+  "ip_inst": {
+    "xci_name": "debug_run_PWM_ip_0_1",
+    "cell_name": "PWM_ip_0",
+    "component_reference": "solathomas.com:sola-thomas:PWM_ip:1.0",
+    "ip_revision": "2",
+    "gen_directory": "../../../../../../project_5.gen/sources_1/bd/debug_run/ip/debug_run_PWM_ip_0_1",
+    "parameters": {
+      "component_parameters": {
+        "C_PWM_Hardware_DATA_WIDTH": [ { "value": "32", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
+        "C_PWM_Hardware_ADDR_WIDTH": [ { "value": "4", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
+        "C_PWM_Hardware_BASEADDR": [ { "value": "0xFFFFFFFF", "resolve_type": "user", "format": "bitString", "enabled": false, "usage": "all" } ],
+        "C_PWM_Hardware_HIGHADDR": [ { "value": "0x00000000", "resolve_type": "user", "format": "bitString", "enabled": false, "usage": "all" } ],
+        "Component_Name": [ { "value": "debug_run_PWM_ip_0_1", "resolve_type": "user", "usage": "all" } ],
+        "clock_frequency": [ { "value": "100000000", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "control_min": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "control_max": [ { "value": "1024", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "pwm_frequency": [ { "value": "50", "resolve_type": "user", "format": "long", "usage": "all" } ]
+      },
+      "model_parameters": {
+        "C_PWM_Hardware_DATA_WIDTH": [ { "value": "32", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "C_PWM_Hardware_ADDR_WIDTH": [ { "value": "4", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "clock_frequency": [ { "value": "100000000", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "pwm_frequency": [ { "value": "50", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "control_min": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "control_max": [ { "value": "1024", "resolve_type": "generated", "format": "long", "usage": "all" } ]
+      },
+      "project_parameters": {
+        "ARCHITECTURE": [ { "value": "zynq" } ],
+        "BASE_BOARD_PART": [ { "value": "digilentinc.com:cora-z7-07s:part0:1.1" } ],
+        "BOARD_CONNECTIONS": [ { "value": "" } ],
+        "DEVICE": [ { "value": "xc7z007s" } ],
+        "PACKAGE": [ { "value": "clg400" } ],
+        "PREFHDL": [ { "value": "VHDL" } ],
+        "SILICON_REVISION": [ { "value": "" } ],
+        "SIMULATOR_LANGUAGE": [ { "value": "VHDL" } ],
+        "SPEEDGRADE": [ { "value": "-1" } ],
+        "STATIC_POWER": [ { "value": "" } ],
+        "TEMPERATURE_GRADE": [ { "value": "" } ],
+        "USE_RDI_CUSTOMIZATION": [ { "value": "TRUE" } ],
+        "USE_RDI_GENERATION": [ { "value": "TRUE" } ]
+      },
+      "runtime_parameters": {
+        "IPCONTEXT": [ { "value": "IP_Integrator" } ],
+        "IPREVISION": [ { "value": "2" } ],
+        "MANAGED": [ { "value": "TRUE" } ],
+        "OUTPUTDIR": [ { "value": "../../../../../../project_5.gen/sources_1/bd/debug_run/ip/debug_run_PWM_ip_0_1" } ],
+        "SELECTEDSIMMODEL": [ { "value": "" } ],
+        "SHAREDDIR": [ { "value": "../../ipshared" } ],
+        "SWVERSION": [ { "value": "2022.2" } ],
+        "SYNTHESISFLOW": [ { "value": "GLOBAL" } ]
+      }
+    },
+    "boundary": {
+      "ports": {
+        "pwm_out": [ { "direction": "out", "driver_value": "0x0" } ],
+        "pwm_hardware_aclk": [ { "direction": "in" } ],
+        "pwm_hardware_aresetn": [ { "direction": "in" } ],
+        "pwm_hardware_awaddr": [ { "direction": "in", "size_left": "3", "size_right": "0" } ],
+        "pwm_hardware_awprot": [ { "direction": "in", "size_left": "2", "size_right": "0" } ],
+        "pwm_hardware_awvalid": [ { "direction": "in" } ],
+        "pwm_hardware_awready": [ { "direction": "out" } ],
+        "pwm_hardware_wdata": [ { "direction": "in", "size_left": "31", "size_right": "0" } ],
+        "pwm_hardware_wstrb": [ { "direction": "in", "size_left": "3", "size_right": "0" } ],
+        "pwm_hardware_wvalid": [ { "direction": "in" } ],
+        "pwm_hardware_wready": [ { "direction": "out" } ],
+        "pwm_hardware_bresp": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
+        "pwm_hardware_bvalid": [ { "direction": "out" } ],
+        "pwm_hardware_bready": [ { "direction": "in" } ],
+        "pwm_hardware_araddr": [ { "direction": "in", "size_left": "3", "size_right": "0" } ],
+        "pwm_hardware_arprot": [ { "direction": "in", "size_left": "2", "size_right": "0" } ],
+        "pwm_hardware_arvalid": [ { "direction": "in" } ],
+        "pwm_hardware_arready": [ { "direction": "out" } ],
+        "pwm_hardware_rdata": [ { "direction": "out", "size_left": "31", "size_right": "0" } ],
+        "pwm_hardware_rresp": [ { "direction": "out", "size_left": "1", "size_right": "0" } ],
+        "pwm_hardware_rvalid": [ { "direction": "out" } ],
+        "pwm_hardware_rready": [ { "direction": "in" } ]
+      },
+      "interfaces": {
+        "PWM_Hardware": {
+          "vlnv": "xilinx.com:interface:aximm:1.0",
+          "abstraction_type": "xilinx.com:interface:aximm_rtl:1.0",
+          "mode": "slave",
+          "memory_map_ref": "PWM_Hardware",
+          "parameters": {
+            "WIZ_DATA_WIDTH": [ { "value": "32", "value_src": "constant", "value_permission": "bd", "format": "long", "usage": "all" } ],
+            "WIZ_NUM_REG": [ { "value": "4", "value_src": "constant", "value_permission": "bd", "format": "long", "usage": "all" } ],
+            "SUPPORTS_NARROW_BURST": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "format": "long", "usage": "all" } ],
+            "DATA_WIDTH": [ { "value": "32", "value_src": "auto", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "PROTOCOL": [ { "value": "AXI4LITE", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "FREQ_HZ": [ { "value": "100000000", "value_src": "user_prop", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "ID_WIDTH": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "ADDR_WIDTH": [ { "value": "4", "value_src": "auto", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "AWUSER_WIDTH": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "ARUSER_WIDTH": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "WUSER_WIDTH": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "RUSER_WIDTH": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "BUSER_WIDTH": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "READ_WRITE_MODE": [ { "value": "READ_WRITE", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_BURST": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_LOCK": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_PROT": [ { "value": "1", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_CACHE": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_QOS": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_REGION": [ { "value": "0", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_WSTRB": [ { "value": "1", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_BRESP": [ { "value": "1", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "HAS_RRESP": [ { "value": "1", "value_src": "constant", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "NUM_READ_OUTSTANDING": [ { "value": "2", "value_src": "default_prop", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "NUM_WRITE_OUTSTANDING": [ { "value": "2", "value_src": "default_prop", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "MAX_BURST_LENGTH": [ { "value": "1", "value_src": "ip_propagated", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "PHASE": [ { "value": "0.0", "value_permission": "bd", "resolve_type": "generated", "format": "float", "is_ips_inferred": true, "is_static_object": false } ],
+            "CLK_DOMAIN": [ { "value": "debug_run_processing_system7_0_1_FCLK_CLK0", "value_src": "default_prop", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "NUM_READ_THREADS": [ { "value": "1", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "NUM_WRITE_THREADS": [ { "value": "1", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "RUSER_BITS_PER_BYTE": [ { "value": "0", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "WUSER_BITS_PER_BYTE": [ { "value": "0", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "INSERT_VIP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_ips_inferred": true, "is_static_object": false } ]
+          },
+          "port_maps": {
+            "AWADDR": [ { "physical_name": "pwm_hardware_awaddr" } ],
+            "AWPROT": [ { "physical_name": "pwm_hardware_awprot" } ],
+            "AWVALID": [ { "physical_name": "pwm_hardware_awvalid" } ],
+            "AWREADY": [ { "physical_name": "pwm_hardware_awready" } ],
+            "WDATA": [ { "physical_name": "pwm_hardware_wdata" } ],
+            "WSTRB": [ { "physical_name": "pwm_hardware_wstrb" } ],
+            "WVALID": [ { "physical_name": "pwm_hardware_wvalid" } ],
+            "WREADY": [ { "physical_name": "pwm_hardware_wready" } ],
+            "BRESP": [ { "physical_name": "pwm_hardware_bresp" } ],
+            "BVALID": [ { "physical_name": "pwm_hardware_bvalid" } ],
+            "BREADY": [ { "physical_name": "pwm_hardware_bready" } ],
+            "ARADDR": [ { "physical_name": "pwm_hardware_araddr" } ],
+            "ARPROT": [ { "physical_name": "pwm_hardware_arprot" } ],
+            "ARVALID": [ { "physical_name": "pwm_hardware_arvalid" } ],
+            "ARREADY": [ { "physical_name": "pwm_hardware_arready" } ],
+            "RDATA": [ { "physical_name": "pwm_hardware_rdata" } ],
+            "RRESP": [ { "physical_name": "pwm_hardware_rresp" } ],
+            "RVALID": [ { "physical_name": "pwm_hardware_rvalid" } ],
+            "RREADY": [ { "physical_name": "pwm_hardware_rready" } ]
+          }
+        },
+        "PWM_Hardware_RST": {
+          "vlnv": "xilinx.com:signal:reset:1.0",
+          "abstraction_type": "xilinx.com:signal:reset_rtl:1.0",
+          "mode": "slave",
+          "parameters": {
+            "POLARITY": [ { "value": "ACTIVE_LOW", "value_src": "constant", "value_permission": "bd", "usage": "all" } ],
+            "INSERT_VIP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_ips_inferred": true, "is_static_object": false } ]
+          },
+          "port_maps": {
+            "RST": [ { "physical_name": "pwm_hardware_aresetn" } ]
+          }
+        },
+        "PWM_Hardware_CLK": {
+          "vlnv": "xilinx.com:signal:clock:1.0",
+          "abstraction_type": "xilinx.com:signal:clock_rtl:1.0",
+          "mode": "slave",
+          "parameters": {
+            "ASSOCIATED_BUSIF": [ { "value": "PWM_Hardware", "value_src": "constant", "value_permission": "bd", "usage": "all" } ],
+            "ASSOCIATED_RESET": [ { "value": "pwm_hardware_aresetn", "value_src": "constant", "value_permission": "bd", "usage": "all" } ],
+            "FREQ_HZ": [ { "value": "100000000", "value_src": "user_prop", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "FREQ_TOLERANCE_HZ": [ { "value": "0", "value_permission": "bd", "resolve_type": "generated", "format": "long", "is_ips_inferred": true, "is_static_object": false } ],
+            "PHASE": [ { "value": "0.0", "value_permission": "bd", "resolve_type": "generated", "format": "float", "is_ips_inferred": true, "is_static_object": false } ],
+            "CLK_DOMAIN": [ { "value": "debug_run_processing_system7_0_1_FCLK_CLK0", "value_src": "default_prop", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "ASSOCIATED_PORT": [ { "value": "", "value_permission": "bd", "resolve_type": "generated", "is_ips_inferred": true, "is_static_object": false } ],
+            "INSERT_VIP": [ { "value": "0", "resolve_type": "user", "format": "long", "usage": "simulation.rtl", "is_ips_inferred": true, "is_static_object": false } ]
+          },
+          "port_maps": {
+            "CLK": [ { "physical_name": "pwm_hardware_aclk" } ]
+          }
+        }
+      },
+      "memory_maps": {
+        "PWM_Hardware": {
+          "address_blocks": {
+            "PWM_Hardware_reg": {
+              "base_address": "0",
+              "range": "4096",
+              "usage": "register",
+              "parameters": {
+                "OFFSET_BASE_PARAM": [ { "value": "C_PWM_Hardware_BASEADDR" } ],
+                "OFFSET_HIGH_PARAM": [ { "value": "C_PWM_Hardware_HIGHADDR" } ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

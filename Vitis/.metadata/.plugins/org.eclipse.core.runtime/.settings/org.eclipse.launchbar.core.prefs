@@ -1,0 +1,16 @@
+LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/arch=x86_64
+LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/name=Local
+LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/os=linux
+configDescList=org.eclipse.launchbar.core.descriptorType.default\:Debugger_EE_316_Digital_System-Default,org.eclipse.launchbar.core.descriptorType.default\:Debugger_xtmrctr_intr_example_1-Default,org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xgpio_intr_tapp_example_1_system,org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xtmrctr_intr_example_1_system,org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xtmrctr_pwm_example_1_system,org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_EE_316_Digital_System_system
+eclipse.preferences.version=1
+org.eclipse.launchbar.core.descriptorType.default\:Debugger_EE_316_Digital_System-Default/activeLaunchMode=embrun
+org.eclipse.launchbar.core.descriptorType.default\:Debugger_EE_316_Digital_System-Default/activeLaunchTarget=org.eclipse.launchbar.core.launchTargetType.local\:Local
+org.eclipse.launchbar.core.descriptorType.default\:Debugger_xgpio_example_1-Default/activeLaunchMode=embrun
+org.eclipse.launchbar.core.descriptorType.default\:Debugger_xtmrctr_intr_example_1-Default/activeLaunchMode=embrun
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_EE_316_Digital_System_system/activeLaunchMode=systemrun
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_EE_316_Digital_System_system/activeLaunchTarget=org.eclipse.launchbar.core.launchTargetType.local\:Local
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xgpio_example_1_system/activeLaunchMode=systemrun
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xgpio_example_1_system/activeLaunchTarget=org.eclipse.launchbar.core.launchTargetType.local\:Local
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xgpio_intr_tapp_example_1_system/activeLaunchMode=systemrun
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xtmrctr_intr_example_1_system/activeLaunchMode=systemrun
+org.eclipse.launchbar.core.descriptorType.default\:SystemDebugger_xtmrctr_pwm_example_1_system/activeLaunchMode=systemrun
